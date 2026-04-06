@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue';
-import { mainButton, miniApp, themeParams, useSignal, viewport } from '@tma.js/sdk-vue';
+import { miniApp, secondaryButton, themeParams, useSignal, viewport } from '@tma.js/sdk-vue';
 
 type RegistrationType = 'individual' | 'team';
 type SubmitState = 'idle' | 'submitting' | 'success' | 'error';
@@ -45,13 +45,13 @@ const submitMessages = reactive<Record<RegistrationType, string>>({
   team: '',
 });
 
-let offMainButton: VoidFunction | null = null;
+let offSecondaryButton: VoidFunction | null = null;
 
 function getFormTitle(type: RegistrationType): string {
   return type === 'individual' ? 'Individual Registration' : 'Team Application';
 }
 
-function getMainButtonText(type: RegistrationType): string {
+function getSecondaryButtonText(type: RegistrationType): string {
   return type === 'individual' ? 'Submit Individual Registration' : 'Submit Team Application';
 }
 
@@ -79,7 +79,7 @@ function toggleCompetition(): void {
   if (!competitionOpen.value) {
     activeForm.value = null;
   }
-  syncMainButton(activeForm.value);
+  syncSecondaryButton(activeForm.value);
 }
 
 function openForm(type: RegistrationType): void {
@@ -88,7 +88,7 @@ function openForm(type: RegistrationType): void {
   }
   const nextForm = activeForm.value === type ? null : type;
   activeForm.value = nextForm;
-  queueMicrotask(() => syncMainButton(nextForm));
+  queueMicrotask(() => syncSecondaryButton(nextForm));
 }
 
 async function submitRegistration(type: RegistrationType): Promise<void> {
@@ -98,7 +98,7 @@ async function submitRegistration(type: RegistrationType): Promise<void> {
 
   submitStates[type] = 'submitting';
   submitMessages[type] = '';
-  syncMainButton(type);
+  syncSecondaryButton(type);
 
   const form = forms[type];
   const payload = new FormData();
@@ -142,38 +142,39 @@ async function submitRegistration(type: RegistrationType): Promise<void> {
       ? error.message
       : 'Could not submit right now. Check your connection and try again.';
   } finally {
-    syncMainButton(activeForm.value);
+    syncSecondaryButton(activeForm.value);
   }
 }
 
-function syncMainButton(forcedType: RegistrationType | null = activeForm.value): void {
+function syncSecondaryButton(forcedType: RegistrationType | null = activeForm.value): void {
   const currentType = forcedType;
   if (!currentType) {
-    mainButton.hideLoader.ifAvailable();
-    mainButton.hide.ifAvailable();
+    secondaryButton.hideLoader.ifAvailable();
+    secondaryButton.hide.ifAvailable();
     return;
   }
 
   const isSubmitting = submitStates[currentType] === 'submitting';
   const isEnabled = isFormValid(currentType) && !isSubmitting;
 
-  mainButton.show.ifAvailable();
-  mainButton.setText.ifAvailable(getMainButtonText(currentType));
+  secondaryButton.show.ifAvailable();
+  secondaryButton.setText.ifAvailable(getSecondaryButtonText(currentType));
+  secondaryButton.setPosition.ifAvailable('bottom');
 
   if (isEnabled) {
-    mainButton.enable.ifAvailable();
+    secondaryButton.enable.ifAvailable();
   } else {
-    mainButton.disable.ifAvailable();
+    secondaryButton.disable.ifAvailable();
   }
 
   if (isSubmitting) {
-    mainButton.showLoader.ifAvailable();
+    secondaryButton.showLoader.ifAvailable();
   } else {
-    mainButton.hideLoader.ifAvailable();
+    secondaryButton.hideLoader.ifAvailable();
   }
 }
 
-function onMainButtonPressed(): void {
+function onSecondaryButtonPressed(): void {
   if (!activeForm.value) {
     return;
   }
@@ -187,9 +188,9 @@ function getMessageClass(type: RegistrationType): string {
 }
 
 onMounted(() => {
-  mainButton.mount.ifAvailable();
-  const clickBinding = mainButton.onClick.ifAvailable(onMainButtonPressed);
-  offMainButton = clickBinding.ok ? clickBinding.data : null;
+  secondaryButton.mount.ifAvailable();
+  const clickBinding = secondaryButton.onClick.ifAvailable(onSecondaryButtonPressed);
+  offSecondaryButton = clickBinding.ok ? clickBinding.data : null;
 
   miniApp.setHeaderColor.ifAvailable('bg_color');
   miniApp.setBgColor.ifAvailable('bg_color');
@@ -202,13 +203,13 @@ onMounted(() => {
   }
 
   miniApp.ready.ifAvailable();
-  syncMainButton(activeForm.value);
+  syncSecondaryButton(activeForm.value);
 });
 
 onBeforeUnmount(() => {
-  offMainButton?.();
-  offMainButton = null;
-  mainButton.offClick.ifAvailable(onMainButtonPressed);
+  offSecondaryButton?.();
+  offSecondaryButton = null;
+  secondaryButton.offClick.ifAvailable(onSecondaryButtonPressed);
 });
 
 watch(
@@ -226,7 +227,7 @@ watch(
     submitStates.team,
   ],
   () => {
-    syncMainButton(activeForm.value);
+    syncSecondaryButton(activeForm.value);
   },
 );
 
