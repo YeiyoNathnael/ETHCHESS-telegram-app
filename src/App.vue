@@ -1,77 +1,18 @@
 <script setup lang="ts">
-import { onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue';
-import { miniApp, secondaryButton, themeParams, useSignal, viewport } from '@tma.js/sdk-vue';
+import { onMounted, ref } from 'vue';
+import { miniApp, themeParams, useSignal, viewport } from '@tma.js/sdk-vue';
 
 type RegistrationType = 'individual' | 'team';
-type SubmitState = 'idle' | 'submitting' | 'success' | 'error';
-
-type RegistrationForm = {
-  fullName: string;
-  subcity: string;
-  phoneNumber: string;
-  age: string;
-};
 
 const FORM_ENDPOINT = 'https://formspree.io/f/xgopdvog';
 const logoSrc = `${import.meta.env.BASE_URL}ethchess-logo.png`;
-const SUBMIT_TIMEOUT_MS = 15000;
 
 const competitionOpen = ref(false);
 const activeForm = ref<RegistrationType | null>(null);
 const isDarkTheme = useSignal(themeParams.isDark);
 
-const forms = reactive<Record<RegistrationType, RegistrationForm>>({
-  individual: {
-    fullName: '',
-    subcity: '',
-    phoneNumber: '',
-    age: '',
-  },
-  team: {
-    fullName: '',
-    subcity: '',
-    phoneNumber: '',
-    age: '',
-  },
-});
-
-const submitStates = reactive<Record<RegistrationType, SubmitState>>({
-  individual: 'idle',
-  team: 'idle',
-});
-
-const submitMessages = reactive<Record<RegistrationType, string>>({
-  individual: '',
-  team: '',
-});
-
-let offSecondaryButton: VoidFunction | null = null;
-
 function getFormTitle(type: RegistrationType): string {
   return type === 'individual' ? 'Individual Registration' : 'Team Application';
-}
-
-function getSecondaryButtonText(type: RegistrationType): string {
-  return type === 'individual' ? 'Submit Individual Registration' : 'Submit Team Application';
-}
-
-function isFormValid(type: RegistrationType): boolean {
-  const form = forms[type];
-  const age = Number(form.age);
-  return (
-    form.fullName.trim().length > 1 &&
-    form.subcity.trim().length > 1 &&
-    form.phoneNumber.trim().length >= 7 &&
-    Number.isFinite(age) &&
-    age > 0
-  );
-}
-
-function resetForm(type: RegistrationType): void {
-  forms[type].fullName = '';
-  forms[type].subcity = '';
-  forms[type].phoneNumber = '';
-  forms[type].age = '';
 }
 
 function toggleCompetition(): void {
@@ -79,119 +20,16 @@ function toggleCompetition(): void {
   if (!competitionOpen.value) {
     activeForm.value = null;
   }
-  syncSecondaryButton(activeForm.value);
 }
 
 function openForm(type: RegistrationType): void {
   if (!competitionOpen.value) {
     competitionOpen.value = true;
   }
-  const nextForm = activeForm.value === type ? null : type;
-  activeForm.value = nextForm;
-  queueMicrotask(() => syncSecondaryButton(nextForm));
-}
-
-async function submitRegistration(type: RegistrationType): Promise<void> {
-  if (!isFormValid(type) || submitStates[type] === 'submitting') {
-    return;
-  }
-
-  submitStates[type] = 'submitting';
-  submitMessages[type] = '';
-  syncSecondaryButton(type);
-
-  const form = forms[type];
-  const payload = new FormData();
-  payload.set('registration_type', type);
-  payload.set('full_name', form.fullName.trim());
-  payload.set('subcity', form.subcity.trim());
-  payload.set('phone_number', form.phoneNumber.trim());
-  payload.set('age', form.age.trim());
-
-  try {
-    const response = await Promise.race<Response>([
-      fetch(FORM_ENDPOINT, {
-        method: 'POST',
-        headers: {
-          Accept: 'application/json',
-        },
-        body: payload,
-      }),
-      new Promise<Response>((_, reject) => {
-        window.setTimeout(() => reject(new Error('timeout')), SUBMIT_TIMEOUT_MS);
-      }),
-    ]);
-
-    if (!response.ok) {
-      let formspreeError = '';
-      try {
-        const body = await response.json() as { errors?: { message?: string }[] };
-        formspreeError = body.errors?.[0]?.message?.trim() || '';
-      } catch {
-        // no-op
-      }
-      throw new Error(formspreeError || `Form submission failed with status ${response.status}`);
-    }
-
-    submitStates[type] = 'success';
-    submitMessages[type] = 'Registration submitted successfully.';
-    resetForm(type);
-  } catch (error) {
-    submitStates[type] = 'error';
-    submitMessages[type] = error instanceof Error && error.message
-      ? error.message
-      : 'Could not submit right now. Check your connection and try again.';
-  } finally {
-    syncSecondaryButton(activeForm.value);
-  }
-}
-
-function syncSecondaryButton(forcedType: RegistrationType | null = activeForm.value): void {
-  const currentType = forcedType;
-  if (!currentType) {
-    secondaryButton.hideLoader.ifAvailable();
-    secondaryButton.hide.ifAvailable();
-    return;
-  }
-
-  const isSubmitting = submitStates[currentType] === 'submitting';
-  const isEnabled = isFormValid(currentType) && !isSubmitting;
-
-  secondaryButton.show.ifAvailable();
-  secondaryButton.setText.ifAvailable(getSecondaryButtonText(currentType));
-  secondaryButton.setPosition.ifAvailable('bottom');
-
-  if (isEnabled) {
-    secondaryButton.enable.ifAvailable();
-  } else {
-    secondaryButton.disable.ifAvailable();
-  }
-
-  if (isSubmitting) {
-    secondaryButton.showLoader.ifAvailable();
-  } else {
-    secondaryButton.hideLoader.ifAvailable();
-  }
-}
-
-function onSecondaryButtonPressed(): void {
-  if (!activeForm.value) {
-    return;
-  }
-  void submitRegistration(activeForm.value);
-}
-
-function getMessageClass(type: RegistrationType): string {
-  return submitStates[type] === 'success'
-    ? 'registration-form__message registration-form__message--success'
-    : 'registration-form__message registration-form__message--error';
+  activeForm.value = activeForm.value === type ? null : type;
 }
 
 onMounted(() => {
-  secondaryButton.mount.ifAvailable();
-  const clickBinding = secondaryButton.onClick.ifAvailable(onSecondaryButtonPressed);
-  offSecondaryButton = clickBinding.ok ? clickBinding.data : null;
-
   miniApp.setHeaderColor.ifAvailable('bg_color');
   miniApp.setBgColor.ifAvailable('bg_color');
   miniApp.setBottomBarColor.ifAvailable('secondary_bg_color');
@@ -203,34 +41,7 @@ onMounted(() => {
   }
 
   miniApp.ready.ifAvailable();
-  syncSecondaryButton(activeForm.value);
 });
-
-onBeforeUnmount(() => {
-  offSecondaryButton?.();
-  offSecondaryButton = null;
-  secondaryButton.offClick.ifAvailable(onSecondaryButtonPressed);
-});
-
-watch(
-  () => [
-    activeForm.value,
-    forms.individual.fullName,
-    forms.individual.subcity,
-    forms.individual.phoneNumber,
-    forms.individual.age,
-    forms.team.fullName,
-    forms.team.subcity,
-    forms.team.phoneNumber,
-    forms.team.age,
-    submitStates.individual,
-    submitStates.team,
-  ],
-  () => {
-    syncSecondaryButton(activeForm.value);
-  },
-);
-
 </script>
 
 <template>
@@ -266,26 +77,24 @@ watch(
         <form
           v-if="activeForm === 'individual'"
           class="registration-form"
-          action="https://formspree.io/f/xgopdvog"
+          :action="FORM_ENDPOINT"
           method="POST"
-          @submit.prevent="submitRegistration('individual')"
         >
           <input type="hidden" name="registration_type" value="individual" />
 
           <label>
             <span>Full name/ሙሉ ስም፡</span>
-            <input v-model="forms.individual.fullName" name="full_name" type="text" required />
+            <input name="full_name" type="text" required />
           </label>
 
           <label>
             <span>Subcity/ክፍለ ከተማ የምትኖሩበት፡</span>
-            <input v-model="forms.individual.subcity" name="subcity" type="text" required />
+            <input name="subcity" type="text" required />
           </label>
 
           <label>
             <span>Phone Number/ስልክ ቁጥር፡</span>
             <input
-              v-model="forms.individual.phoneNumber"
               name="phone_number"
               type="tel"
               inputmode="tel"
@@ -296,7 +105,6 @@ watch(
           <label>
             <span>Age/እድሜ፡</span>
             <input
-              v-model="forms.individual.age"
               name="age"
               type="number"
               min="1"
@@ -305,13 +113,9 @@ watch(
             />
           </label>
 
-          <button class="registration-form__fallback" type="submit" :disabled="submitStates.individual === 'submitting'">
-            {{ submitStates.individual === 'submitting' ? 'Submitting...' : 'Submit Individual Registration' }}
+          <button class="registration-form__fallback" type="submit">
+            Submit Individual Registration
           </button>
-
-          <p v-if="submitMessages.individual" :class="getMessageClass('individual')">
-            {{ submitMessages.individual }}
-          </p>
         </form>
       </article>
 
@@ -327,26 +131,24 @@ watch(
         <form
           v-if="activeForm === 'team'"
           class="registration-form"
-          action="https://formspree.io/f/xgopdvog"
+          :action="FORM_ENDPOINT"
           method="POST"
-          @submit.prevent="submitRegistration('team')"
         >
           <input type="hidden" name="registration_type" value="team" />
 
           <label>
             <span>Full name/ሙሉ ስም፡</span>
-            <input v-model="forms.team.fullName" name="full_name" type="text" required />
+            <input name="full_name" type="text" required />
           </label>
 
           <label>
             <span>Subcity/ክፍለ ከተማ የምትኖሩበት፡</span>
-            <input v-model="forms.team.subcity" name="subcity" type="text" required />
+            <input name="subcity" type="text" required />
           </label>
 
           <label>
             <span>Phone Number/ስልክ ቁጥር፡</span>
             <input
-              v-model="forms.team.phoneNumber"
               name="phone_number"
               type="tel"
               inputmode="tel"
@@ -357,7 +159,6 @@ watch(
           <label>
             <span>Age/እድሜ፡</span>
             <input
-              v-model="forms.team.age"
               name="age"
               type="number"
               min="1"
@@ -366,13 +167,9 @@ watch(
             />
           </label>
 
-          <button class="registration-form__fallback" type="submit" :disabled="submitStates.team === 'submitting'">
-            {{ submitStates.team === 'submitting' ? 'Submitting...' : 'Submit Team Application' }}
+          <button class="registration-form__fallback" type="submit">
+            Submit Team Application
           </button>
-
-          <p v-if="submitMessages.team" :class="getMessageClass('team')">
-            {{ submitMessages.team }}
-          </p>
         </form>
       </article>
     </section>
@@ -602,28 +399,9 @@ watch(
   font-weight: 700;
   background: var(--tg-theme-button-color, #123f6a);
   color: var(--tg-theme-button-text-color, #fff);
-  display: none;
-}
-
-.registration-form__fallback:disabled {
-  opacity: 0.6;
-}
-
-.registration-form__message {
-  margin: 2px 0 0;
-  border-radius: 12px;
-  padding: 10px;
-  font-size: 13px;
-}
-
-.registration-form__message--success {
-  background: color-mix(in srgb, #1dbf73 16%, var(--tg-theme-bg-color, #fff));
-  color: color-mix(in srgb, #1dbf73 68%, var(--tg-theme-text-color, #13253c));
-}
-
-.registration-form__message--error {
-  background: color-mix(in srgb, var(--tg-theme-destructive-text-color, #ec3942) 14%, var(--tg-theme-bg-color, #fff));
-  color: var(--tg-theme-destructive-text-color, #c9373f);
+  display: inline-flex;
+  justify-content: center;
+  align-items: center;
 }
 
 @media (min-width: 720px) {

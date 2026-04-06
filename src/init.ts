@@ -9,7 +9,6 @@ import {
   emitEvent,
   miniApp,
   backButton,
-  secondaryButton,
 } from '@tma.js/sdk-vue';
 
 /**
@@ -66,7 +65,6 @@ export async function init(options: {
     themeParams.mount();
     miniApp.mount();
     themeParams.bindCssVars();
-    secondaryButton.mount.ifAvailable();
   }
 
   if (viewport.mount.isAvailable()) {
