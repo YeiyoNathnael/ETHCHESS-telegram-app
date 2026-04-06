@@ -13,6 +13,7 @@ type RegistrationForm = {
 };
 
 const FORM_ENDPOINT = 'https://formspree.io/f/xgopdvog';
+const logoSrc = `${import.meta.env.BASE_URL}ethchess-logo.png`;
 
 const competitionOpen = ref(false);
 const activeForm = ref<RegistrationType | null>(null);
@@ -77,6 +78,7 @@ function toggleCompetition(): void {
   if (!competitionOpen.value) {
     activeForm.value = null;
   }
+  syncMainButton();
 }
 
 function openForm(type: RegistrationType): void {
@@ -84,6 +86,7 @@ function openForm(type: RegistrationType): void {
     competitionOpen.value = true;
   }
   activeForm.value = activeForm.value === type ? null : type;
+  syncMainButton();
 }
 
 async function submitRegistration(type: RegistrationType): Promise<void> {
@@ -217,7 +220,7 @@ watch(
     <section class="hero card">
       <div class="hero__topline">ETHCHESS CLUB</div>
       <div class="hero__row">
-        <div class="hero__logo">Logo</div>
+        <img class="hero__logo" :src="logoSrc" alt="ETHCHESS logo" />
         <div>
           <h1 class="hero__title">Welcome to ETHCHESS</h1>
           <p class="hero__subtitle">Register for the Under 20's Chess Competition</p>
@@ -388,9 +391,9 @@ watch(
 }
 
 .hero {
-  padding: 16px;
+  padding: 12px;
   display: grid;
-  gap: 12px;
+  gap: 8px;
 }
 
 .hero__topline {
@@ -404,20 +407,16 @@ watch(
   display: grid;
   grid-template-columns: auto 1fr;
   align-items: center;
-  gap: 12px;
+  gap: 10px;
 }
 
 .hero__logo {
-  width: 72px;
-  height: 72px;
-  border-radius: 18px;
-  border: 1px dashed color-mix(in srgb, var(--tg-theme-link-color, #6ab3f3) 70%, transparent);
-  background: color-mix(in srgb, var(--tg-theme-secondary-bg-color, #f0f4fb) 75%, transparent);
-  color: var(--tg-theme-link-color, #4a688a);
-  font-size: 13px;
-  font-weight: 700;
-  display: grid;
-  place-items: center;
+  width: 58px;
+  height: 58px;
+  border-radius: 14px;
+  border: 1px solid color-mix(in srgb, var(--tg-theme-link-color, #6ab3f3) 65%, transparent);
+  object-fit: cover;
+  display: block;
 }
 
 .hero__title {
@@ -427,26 +426,26 @@ watch(
 }
 
 .hero__subtitle {
-  margin: 6px 0 0;
+  margin: 4px 0 0;
   color: var(--tg-theme-subtitle-text-color, #4b627b);
-  font-size: 14px;
+  font-size: 13px;
 }
 
 .entry-card {
-  border: 0;
+  border: 1px solid color-mix(in srgb, var(--tg-theme-button-color, #5288c1) 68%, black);
   border-radius: 18px;
-  padding: 16px;
+  padding: 14px;
   width: 100%;
   text-align: left;
   color: var(--tg-theme-button-text-color, #fff);
   background: linear-gradient(
-    130deg,
-    color-mix(in srgb, var(--tg-theme-button-color, #5288c1) 72%, black) 0%,
-    var(--tg-theme-button-color, #5288c1) 100%
+    145deg,
+    color-mix(in srgb, var(--tg-theme-button-color, #5288c1) 45%, black) 0%,
+    color-mix(in srgb, var(--tg-theme-button-color, #5288c1) 70%, black) 100%
   );
   display: grid;
-  gap: 6px;
-  box-shadow: 0 10px 26px color-mix(in srgb, var(--tg-theme-button-color, #5288c1) 38%, transparent);
+  gap: 4px;
+  box-shadow: 0 6px 16px color-mix(in srgb, var(--tg-theme-button-color, #5288c1) 30%, black);
 }
 
 .entry-card__title {
@@ -475,7 +474,7 @@ watch(
 }
 
 .option-card__image {
-  height: 118px;
+  height: 74px;
   display: grid;
   place-items: center;
   font-weight: 700;
@@ -500,7 +499,7 @@ watch(
 }
 
 .option-card__header {
-  padding: 14px;
+  padding: 10px 12px;
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -509,7 +508,7 @@ watch(
 
 .option-card__header h2 {
   margin: 0;
-  font-size: 18px;
+  font-size: 16px;
 }
 
 .option-card__toggle {
@@ -519,7 +518,11 @@ watch(
   font-size: 13px;
   font-weight: 700;
   border-radius: 999px;
-  padding: 8px 13px;
+  padding: 6px 10px;
+}
+
+.option-card--active .option-card__image {
+  height: 108px;
 }
 
 .registration-form {
