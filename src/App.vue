@@ -146,38 +146,31 @@ async function submitRegistration(type: RegistrationType): Promise<void> {
   }
 }
 
-function setMainButtonParams(params: {
-  isVisible?: boolean;
-  text?: string;
-  isEnabled?: boolean;
-  isLoaderVisible?: boolean;
-}): void {
-  mainButton.setParams.ifAvailable(params);
-}
-
 function syncMainButton(forcedType: RegistrationType | null = activeForm.value): void {
-  if (!mainButton.isMounted()) {
-    return;
-  }
-
   const currentType = forcedType;
   if (!currentType) {
-    setMainButtonParams({
-      isVisible: false,
-      isLoaderVisible: false,
-    });
+    mainButton.hideLoader.ifAvailable();
+    mainButton.hide.ifAvailable();
     return;
   }
 
   const isSubmitting = submitStates[currentType] === 'submitting';
   const isEnabled = isFormValid(currentType) && !isSubmitting;
 
-  setMainButtonParams({
-    isVisible: true,
-    text: getMainButtonText(currentType),
-    isEnabled,
-    isLoaderVisible: isSubmitting,
-  });
+  mainButton.show.ifAvailable();
+  mainButton.setText.ifAvailable(getMainButtonText(currentType));
+
+  if (isEnabled) {
+    mainButton.enable.ifAvailable();
+  } else {
+    mainButton.disable.ifAvailable();
+  }
+
+  if (isSubmitting) {
+    mainButton.showLoader.ifAvailable();
+  } else {
+    mainButton.hideLoader.ifAvailable();
+  }
 }
 
 function onMainButtonPressed(): void {
@@ -208,6 +201,7 @@ onMounted(() => {
     void requestFullscreen.data;
   }
 
+  miniApp.ready.ifAvailable();
   syncMainButton(activeForm.value);
 });
 
