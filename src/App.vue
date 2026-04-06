@@ -231,10 +231,12 @@ watch(
       </div>
     </section>
 
-    <button class="entry-card" type="button" @click="toggleCompetition">
-      <span class="entry-card__title">Register for the Under 20's Chess Competition</span>
-      <span class="entry-card__action">{{ competitionOpen ? 'Hide options' : 'Show options' }}</span>
-    </button>
+    <section class="entry-card card">
+      <h2 class="entry-card__title">Register for the Under 20's Chess Competition</h2>
+      <button class="entry-card__action-btn" type="button" @click="toggleCompetition">
+        {{ competitionOpen ? 'Hide options' : 'Show options' }}
+      </button>
+    </section>
 
     <section v-if="competitionOpen" class="options">
       <article class="card option-card" :class="{ 'option-card--active': activeForm === 'individual' }">
@@ -375,9 +377,11 @@ watch(
     radial-gradient(circle at 100% 0%, color-mix(in srgb, var(--tg-theme-button-color, #5288c1) 15%, transparent) 0%, transparent 35%),
     var(--tg-theme-bg-color, #eef3fb);
   color: var(--tg-theme-text-color, #13253c);
-  display: flex;
-  flex-direction: column;
-  gap: 14px;
+  display: block;
+}
+
+.app-shell > * + * {
+  margin-top: 14px;
 }
 
 .app-shell--dark {
@@ -396,8 +400,8 @@ watch(
 
 .hero {
   padding: 12px;
-  display: grid;
-  gap: 8px;
+  display: block;
+  height: auto;
 }
 
 .hero__topline {
@@ -412,6 +416,7 @@ watch(
   grid-template-columns: auto 1fr;
   align-items: center;
   gap: 10px;
+  margin-top: 8px;
 }
 
 .hero__logo {
@@ -436,48 +441,48 @@ watch(
 }
 
 .entry-card {
-  border: 1px solid color-mix(in srgb, var(--tg-theme-button-color, #5288c1) 68%, black);
-  border-radius: 18px;
-  padding: 14px;
-  width: 100%;
-  text-align: left;
-  color: var(--tg-theme-button-text-color, #fff);
-  background: linear-gradient(
-    145deg,
-    color-mix(in srgb, var(--tg-theme-button-color, #5288c1) 45%, black) 0%,
-    color-mix(in srgb, var(--tg-theme-button-color, #5288c1) 70%, black) 100%
-  );
-  display: flex;
-  flex-direction: column;
-  align-items: flex-start;
-  gap: 10px;
-  box-shadow: 0 6px 16px color-mix(in srgb, var(--tg-theme-button-color, #5288c1) 30%, black);
+  padding: 12px;
+  height: auto;
+  min-height: 0;
 }
 
 .entry-card__title {
+  margin: 0;
+  font-size: 20px;
   font-weight: 700;
-  font-size: 16px;
+  line-height: 1.2;
+  color: var(--tg-theme-text-color, #13253c);
 }
 
-.entry-card__action {
-  font-size: 12px;
-  font-weight: 700;
-  border-radius: 999px;
-  padding: 6px 12px;
-  border: 1px solid color-mix(in srgb, var(--tg-theme-button-text-color, #fff) 40%, transparent);
-  background: color-mix(in srgb, black 35%, transparent);
+.entry-card__action-btn {
+  margin-top: 10px;
+  border: 1px solid color-mix(in srgb, var(--tg-theme-button-color, #5288c1) 65%, black);
+  background: linear-gradient(
+    145deg,
+    color-mix(in srgb, var(--tg-theme-button-color, #5288c1) 42%, black) 0%,
+    color-mix(in srgb, var(--tg-theme-button-color, #5288c1) 70%, black) 100%
+  );
   color: var(--tg-theme-button-text-color, #fff);
+  border-radius: 10px;
+  padding: 10px 14px;
+  font-size: 14px;
+  font-weight: 700;
+  line-height: 1;
+  box-shadow: 0 6px 14px color-mix(in srgb, var(--tg-theme-button-color, #5288c1) 35%, black);
 }
 
 .options {
-  display: flex;
-  flex-direction: column;
-  gap: 14px;
+  display: block;
+}
+
+.options > * + * {
+  margin-top: 14px;
 }
 
 .option-card {
   overflow: hidden;
   transition: transform 180ms ease, box-shadow 180ms ease;
+  min-height: 0;
 }
 
 .option-card--active {
@@ -516,6 +521,7 @@ watch(
   align-items: center;
   justify-content: space-between;
   gap: 10px;
+  height: auto;
 }
 
 .option-card__header h2 {
@@ -531,6 +537,11 @@ watch(
   font-weight: 700;
   border-radius: 999px;
   padding: 6px 10px;
+}
+
+.entry-card__action-btn:active,
+.option-card__toggle:active {
+  transform: translateY(1px);
 }
 
 .option-card--active .option-card__image {
