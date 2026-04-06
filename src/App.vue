@@ -1,5 +1,6 @@
 <script setup lang="ts">
-import { computed, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue';
+import { onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue';
+import { mainButton, miniApp, themeParams, useSignal, viewport } from '@tma.js/sdk-vue';
 
 type RegistrationType = 'individual' | 'team';
 type SubmitState = 'idle' | 'submitting' | 'success' | 'error';
@@ -11,42 +12,11 @@ type RegistrationForm = {
   age: string;
 };
 
-type WebAppLike = {
-  expand?: () => void;
-  requestFullscreen?: () => void;
-  setHeaderColor?: (color: string) => void;
-  setBackgroundColor?: (color: string) => void;
-  viewportHeight?: number;
-  viewportStableHeight?: number;
-  isExpanded?: boolean;
-  isFullscreen?: boolean;
-  MainButton?: {
-    setText?: (text: string) => void;
-    show?: () => void;
-    hide?: () => void;
-    enable?: () => void;
-    disable?: () => void;
-    showProgress?: (leaveActive?: boolean) => void;
-    hideProgress?: () => void;
-  };
-  onEvent?: (event: string, handler: (payload?: unknown) => void) => void;
-  offEvent?: (event: string, handler: (payload?: unknown) => void) => void;
-  safeAreaInset?: Partial<Record<'top' | 'right' | 'bottom' | 'left', number>>;
-  contentSafeAreaInset?: Partial<Record<'top' | 'right' | 'bottom' | 'left', number>>;
-};
-
-declare global {
-  interface Window {
-    Telegram?: {
-      WebApp?: WebAppLike;
-    };
-  }
-}
-
 const FORM_ENDPOINT = 'https://formspree.io/f/xgopdvog';
 
 const competitionOpen = ref(false);
 const activeForm = ref<RegistrationType | null>(null);
+const isDarkTheme = useSignal(themeParams.isDark);
 
 const forms = reactive<Record<RegistrationType, RegistrationForm>>({
   individual: {
@@ -73,9 +43,7 @@ const submitMessages = reactive<Record<RegistrationType, string>>({
   team: '',
 });
 
-const isViewportStable = ref(true);
-
-const webApp = computed(() => window.Telegram?.WebApp);
+let offMainButton: VoidFunction | null = null;
 
 function getFormTitle(type: RegistrationType): string {
   return type === 'individual' ? 'Individual Registration' : 'Team Application';
@@ -116,64 +84,6 @@ function openForm(type: RegistrationType): void {
     competitionOpen.value = true;
   }
   activeForm.value = activeForm.value === type ? null : type;
-}
-
-function setCssVar(name: string, value: string): void {
-  document.documentElement.style.setProperty(name, value);
-}
-
-function applySafeAreaInsets(): void {
-  const app = webApp.value;
-  if (!app) {
-    return;
-  }
-
-  const insets = app.safeAreaInset ?? app.contentSafeAreaInset;
-  if (!insets) {
-    return;
-  }
-
-  setCssVar('--tg-safe-top', `${insets.top ?? 0}px`);
-  setCssVar('--tg-safe-right', `${insets.right ?? 0}px`);
-  setCssVar('--tg-safe-bottom', `${insets.bottom ?? 0}px`);
-  setCssVar('--tg-safe-left', `${insets.left ?? 0}px`);
-}
-
-function applyNativeTheme(): void {
-  const app = webApp.value;
-  if (!app) {
-    return;
-  }
-
-  app.setHeaderColor?.('bg_color');
-
-  const computed = getComputedStyle(document.documentElement);
-  const bg = computed.getPropertyValue('--tg-theme-bg-color').trim();
-  if (bg) {
-    app.setBackgroundColor?.(bg);
-  }
-}
-
-function applyViewportMetrics(force = false): void {
-  const app = webApp.value;
-  if (!app) {
-    return;
-  }
-
-  if (!force && !isViewportStable.value) {
-    return;
-  }
-
-  const stableHeight = app.viewportStableHeight ?? app.viewportHeight;
-  if (stableHeight && Number.isFinite(stableHeight)) {
-    setCssVar('--tg-app-height', `${stableHeight}px`);
-  }
-}
-
-function handleViewportChanged(payload?: unknown): void {
-  const next = payload as { isStateStable?: boolean } | undefined;
-  isViewportStable.value = next?.isStateStable ?? true;
-  applyViewportMetrics();
 }
 
 async function submitRegistration(type: RegistrationType): Promise<void> {
@@ -220,34 +130,30 @@ async function submitRegistration(type: RegistrationType): Promise<void> {
 }
 
 function syncMainButton(): void {
-  const app = webApp.value;
-  const button = app?.MainButton;
-  if (!button) {
+  if (!mainButton.isMounted()) {
     return;
   }
 
   const currentType = activeForm.value;
   if (!currentType) {
-    button.hide?.();
-    button.hideProgress?.();
+    mainButton.setParams({
+      isVisible: false,
+      isLoaderVisible: false,
+      hasShineEffect: false,
+    });
     return;
   }
 
-  button.show?.();
-  button.setText?.(getMainButtonText(currentType));
+  const isSubmitting = submitStates[currentType] === 'submitting';
+  const isEnabled = isFormValid(currentType) && !isSubmitting;
 
-  if (submitStates[currentType] === 'submitting') {
-    button.disable?.();
-    button.showProgress?.(false);
-    return;
-  }
-
-  button.hideProgress?.();
-  if (isFormValid(currentType)) {
-    button.enable?.();
-  } else {
-    button.disable?.();
-  }
+  mainButton.setParams({
+    isVisible: true,
+    text: getMainButtonText(currentType),
+    isEnabled,
+    isLoaderVisible: isSubmitting,
+    hasShineEffect: isEnabled,
+  });
 }
 
 function onMainButtonPressed(): void {
@@ -257,58 +163,33 @@ function onMainButtonPressed(): void {
   void submitRegistration(activeForm.value);
 }
 
-function registerTelegramEvents(): void {
-  const app = webApp.value;
-  if (!app?.onEvent) {
-    return;
-  }
-
-  app.onEvent('mainButtonClicked', onMainButtonPressed);
-  app.onEvent('main_button_pressed', onMainButtonPressed);
-  app.onEvent('viewportChanged', handleViewportChanged);
-  app.onEvent('viewport_changed', handleViewportChanged);
-  app.onEvent('safeAreaChanged', applySafeAreaInsets);
-  app.onEvent('safe_area_changed', applySafeAreaInsets);
-  app.onEvent('contentSafeAreaChanged', applySafeAreaInsets);
-  app.onEvent('content_safe_area_changed', applySafeAreaInsets);
-  app.onEvent('themeChanged', applyNativeTheme);
-  app.onEvent('theme_changed', applyNativeTheme);
-}
-
-function unregisterTelegramEvents(): void {
-  const app = webApp.value;
-  if (!app?.offEvent) {
-    return;
-  }
-
-  app.offEvent('mainButtonClicked', onMainButtonPressed);
-  app.offEvent('main_button_pressed', onMainButtonPressed);
-  app.offEvent('viewportChanged', handleViewportChanged);
-  app.offEvent('viewport_changed', handleViewportChanged);
-  app.offEvent('safeAreaChanged', applySafeAreaInsets);
-  app.offEvent('safe_area_changed', applySafeAreaInsets);
-  app.offEvent('contentSafeAreaChanged', applySafeAreaInsets);
-  app.offEvent('content_safe_area_changed', applySafeAreaInsets);
-  app.offEvent('themeChanged', applyNativeTheme);
-  app.offEvent('theme_changed', applyNativeTheme);
+function getMessageClass(type: RegistrationType): string {
+  return submitStates[type] === 'success'
+    ? 'registration-form__message registration-form__message--success'
+    : 'registration-form__message registration-form__message--error';
 }
 
 onMounted(() => {
-  const app = webApp.value;
+  const clickBinding = mainButton.onClick.ifAvailable(onMainButtonPressed);
+  offMainButton = clickBinding.ok ? clickBinding.data : null;
 
-  if (app) {
-    app.expand?.();
-    app.requestFullscreen?.();
-    applySafeAreaInsets();
-    applyViewportMetrics(true);
-    applyNativeTheme();
-    registerTelegramEvents();
-    syncMainButton();
+  miniApp.setHeaderColor.ifAvailable('bg_color');
+  miniApp.setBgColor.ifAvailable('bg_color');
+  miniApp.setBottomBarColor.ifAvailable('secondary_bg_color');
+
+  viewport.expand.ifAvailable();
+  const requestFullscreen = viewport.requestFullscreen.ifAvailable();
+  if (requestFullscreen.ok) {
+    void requestFullscreen.data;
   }
+
+  syncMainButton();
 });
 
 onBeforeUnmount(() => {
-  unregisterTelegramEvents();
+  offMainButton?.();
+  offMainButton = null;
+  mainButton.offClick.ifAvailable(onMainButtonPressed);
 });
 
 watch(
@@ -332,25 +213,30 @@ watch(
 </script>
 
 <template>
-  <main class="app-shell">
-    <section class="hero">
-      <div class="hero__logo">Logo Placeholder</div>
-      <h1 class="hero__title">Welcome to ETHCHESS</h1>
-      <p class="hero__subtitle">Under 20's Chess Competition Registration</p>
+  <main class="app-shell" :class="{ 'app-shell--dark': isDarkTheme }">
+    <section class="hero card">
+      <div class="hero__topline">ETHCHESS CLUB</div>
+      <div class="hero__row">
+        <div class="hero__logo">Logo</div>
+        <div>
+          <h1 class="hero__title">Welcome to ETHCHESS</h1>
+          <p class="hero__subtitle">Register for the Under 20's Chess Competition</p>
+        </div>
+      </div>
     </section>
 
-    <button class="card card--primary" type="button" @click="toggleCompetition">
-      <span>Register for the Under 20's Chess Competition</span>
-      <span>{{ competitionOpen ? 'Hide' : 'Open' }}</span>
+    <button class="entry-card" type="button" @click="toggleCompetition">
+      <span class="entry-card__title">Register for the Under 20's Chess Competition</span>
+      <span class="entry-card__meta">{{ competitionOpen ? 'Hide options' : 'Open options' }}</span>
     </button>
 
     <section v-if="competitionOpen" class="options">
-      <article class="card option-card">
+      <article class="card option-card" :class="{ 'option-card--active': activeForm === 'individual' }">
         <div class="option-card__image">Individual Image Placeholder</div>
-        <div class="option-card__body">
+        <div class="option-card__header">
           <h2>{{ getFormTitle('individual') }}</h2>
           <button class="option-card__toggle" type="button" @click="openForm('individual')">
-            {{ activeForm === 'individual' ? 'Close Form' : 'Open Form' }}
+            {{ activeForm === 'individual' ? 'Close' : 'Open' }}
           </button>
         </div>
 
@@ -364,17 +250,17 @@ watch(
           <input type="hidden" name="registration_type" value="individual" />
 
           <label>
-            Full name/ሙሉ ስም፡
+            <span>Full name/ሙሉ ስም፡</span>
             <input v-model="forms.individual.fullName" name="full_name" type="text" required />
           </label>
 
           <label>
-            Subcity/ክፍለ ከተማ የምትኖሩበት፡
+            <span>Subcity/ክፍለ ከተማ የምትኖሩበት፡</span>
             <input v-model="forms.individual.subcity" name="subcity" type="text" required />
           </label>
 
           <label>
-            Phone Number/ስልክ ቁጥር፡
+            <span>Phone Number/ስልክ ቁጥር፡</span>
             <input
               v-model="forms.individual.phoneNumber"
               name="phone_number"
@@ -385,7 +271,7 @@ watch(
           </label>
 
           <label>
-            Age/እድሜ፡
+            <span>Age/እድሜ፡</span>
             <input
               v-model="forms.individual.age"
               name="age"
@@ -400,18 +286,18 @@ watch(
             Submit Individual Registration
           </button>
 
-          <p v-if="submitMessages.individual" class="registration-form__message">
+          <p v-if="submitMessages.individual" :class="getMessageClass('individual')">
             {{ submitMessages.individual }}
           </p>
         </form>
       </article>
 
-      <article class="card option-card">
-        <div class="option-card__image">Team Image Placeholder</div>
-        <div class="option-card__body">
+      <article class="card option-card" :class="{ 'option-card--active': activeForm === 'team' }">
+        <div class="option-card__image option-card__image--team">Team Image Placeholder</div>
+        <div class="option-card__header">
           <h2>{{ getFormTitle('team') }}</h2>
           <button class="option-card__toggle" type="button" @click="openForm('team')">
-            {{ activeForm === 'team' ? 'Close Form' : 'Open Form' }}
+            {{ activeForm === 'team' ? 'Close' : 'Open' }}
           </button>
         </div>
 
@@ -425,17 +311,17 @@ watch(
           <input type="hidden" name="registration_type" value="team" />
 
           <label>
-            Full name/ሙሉ ስም፡
+            <span>Full name/ሙሉ ስም፡</span>
             <input v-model="forms.team.fullName" name="full_name" type="text" required />
           </label>
 
           <label>
-            Subcity/ክፍለ ከተማ የምትኖሩበት፡
+            <span>Subcity/ክፍለ ከተማ የምትኖሩበት፡</span>
             <input v-model="forms.team.subcity" name="subcity" type="text" required />
           </label>
 
           <label>
-            Phone Number/ስልክ ቁጥር፡
+            <span>Phone Number/ስልክ ቁጥር፡</span>
             <input
               v-model="forms.team.phoneNumber"
               name="phone_number"
@@ -446,7 +332,7 @@ watch(
           </label>
 
           <label>
-            Age/እድሜ፡
+            <span>Age/እድሜ፡</span>
             <input
               v-model="forms.team.age"
               name="age"
@@ -461,7 +347,7 @@ watch(
             Submit Team Application
           </button>
 
-          <p v-if="submitMessages.team" class="registration-form__message">
+          <p v-if="submitMessages.team" :class="getMessageClass('team')">
             {{ submitMessages.team }}
           </p>
         </form>
@@ -472,80 +358,105 @@ watch(
 
 <style scoped>
 .app-shell {
-  min-height: var(--tg-app-height, 100dvh);
+  min-height: var(--tg-viewport-stable-height, 100dvh);
   padding:
-    calc(24px + var(--tg-safe-top, env(safe-area-inset-top, 0px)))
-    calc(16px + var(--tg-safe-right, env(safe-area-inset-right, 0px)))
-    calc(24px + var(--tg-safe-bottom, env(safe-area-inset-bottom, 0px)))
-    calc(16px + var(--tg-safe-left, env(safe-area-inset-left, 0px)));
+    calc(18px + var(--tg-viewport-content-safe-area-inset-top, env(safe-area-inset-top, 0px)))
+    calc(14px + var(--tg-viewport-content-safe-area-inset-right, env(safe-area-inset-right, 0px)))
+    calc(24px + var(--tg-viewport-content-safe-area-inset-bottom, env(safe-area-inset-bottom, 0px)))
+    calc(14px + var(--tg-viewport-content-safe-area-inset-left, env(safe-area-inset-left, 0px)));
   background:
-    radial-gradient(
-      circle at 10% 0%,
-      color-mix(in srgb, var(--tg-theme-link-color, #6ab3f3) 14%, transparent) 0%,
-      color-mix(in srgb, var(--tg-theme-secondary-bg-color, #f3f6fb) 65%, transparent) 38%,
-      var(--tg-theme-bg-color, #eef3fb) 100%
-    );
-  color: var(--tg-theme-text-color, #11253b);
+    radial-gradient(circle at 8% -12%, color-mix(in srgb, var(--tg-theme-link-color, #6ab3f3) 20%, transparent) 0%, transparent 42%),
+    radial-gradient(circle at 100% 0%, color-mix(in srgb, var(--tg-theme-button-color, #5288c1) 15%, transparent) 0%, transparent 35%),
+    var(--tg-theme-bg-color, #eef3fb);
+  color: var(--tg-theme-text-color, #13253c);
   display: grid;
-  gap: 16px;
+  gap: 14px;
+}
+
+.app-shell--dark {
+  background:
+    radial-gradient(circle at 8% -12%, color-mix(in srgb, var(--tg-theme-link-color, #6ab3f3) 28%, transparent) 0%, transparent 42%),
+    radial-gradient(circle at 100% 0%, color-mix(in srgb, var(--tg-theme-button-color, #5288c1) 24%, transparent) 0%, transparent 36%),
+    var(--tg-theme-bg-color, #111820);
+}
+
+.card {
+  border-radius: 20px;
+  border: 1px solid color-mix(in srgb, var(--tg-theme-hint-color, #8ea0b5) 30%, transparent);
+  background: color-mix(in srgb, var(--tg-theme-section-bg-color, #fff) 90%, transparent);
+  box-shadow: 0 8px 24px color-mix(in srgb, var(--tg-theme-hint-color, #8ea0b5) 22%, transparent);
 }
 
 .hero {
-  background: color-mix(in srgb, var(--tg-theme-section-bg-color, #ffffff) 92%, transparent);
-  border: 1px solid color-mix(in srgb, var(--tg-theme-hint-color, #8ea0b5) 28%, transparent);
-  border-radius: 18px;
-  padding: 18px;
-  box-shadow: 0 14px 30px color-mix(in srgb, var(--tg-theme-hint-color, #8ea0b5) 22%, transparent);
+  padding: 16px;
+  display: grid;
+  gap: 12px;
+}
+
+.hero__topline {
+  font-size: 11px;
+  letter-spacing: 0.08em;
+  font-weight: 700;
+  color: var(--tg-theme-accent-text-color, var(--tg-theme-link-color, #6ab3f3));
+}
+
+.hero__row {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  align-items: center;
+  gap: 12px;
 }
 
 .hero__logo {
-  width: 78px;
-  height: 78px;
-  border-radius: 16px;
-  border: 1px dashed color-mix(in srgb, var(--tg-theme-link-color, #6ab3f3) 55%, var(--tg-theme-hint-color, #8ea0b5));
+  width: 72px;
+  height: 72px;
+  border-radius: 18px;
+  border: 1px dashed color-mix(in srgb, var(--tg-theme-link-color, #6ab3f3) 70%, transparent);
+  background: color-mix(in srgb, var(--tg-theme-secondary-bg-color, #f0f4fb) 75%, transparent);
+  color: var(--tg-theme-link-color, #4a688a);
+  font-size: 13px;
+  font-weight: 700;
   display: grid;
   place-items: center;
-  font-size: 12px;
-  font-weight: 700;
-  color: var(--tg-theme-link-color, #4a688a);
-  background: color-mix(in srgb, var(--tg-theme-secondary-bg-color, #f0f4fb) 82%, transparent);
-  margin-bottom: 12px;
 }
 
 .hero__title {
   margin: 0;
-  font-size: 30px;
-  line-height: 1.1;
+  line-height: 1.05;
+  font-size: clamp(24px, 7vw, 34px);
 }
 
 .hero__subtitle {
-  margin: 8px 0 0;
-  color: var(--tg-theme-subtitle-text-color, #31506f);
+  margin: 6px 0 0;
+  color: var(--tg-theme-subtitle-text-color, #4b627b);
+  font-size: 14px;
 }
 
-.card {
-  border: 1px solid color-mix(in srgb, var(--tg-theme-hint-color, #8ea0b5) 30%, transparent);
-  border-radius: 18px;
-  background: color-mix(in srgb, var(--tg-theme-secondary-bg-color, #ffffff) 90%, transparent);
-  box-shadow: 0 10px 24px color-mix(in srgb, var(--tg-theme-hint-color, #8ea0b5) 20%, transparent);
-}
-
-.card--primary {
+.entry-card {
   border: 0;
+  border-radius: 18px;
+  padding: 16px;
   width: 100%;
+  text-align: left;
+  color: var(--tg-theme-button-text-color, #fff);
   background: linear-gradient(
-    120deg,
-    color-mix(in srgb, var(--tg-theme-button-color, #5288c1) 78%, black) 0%,
+    130deg,
+    color-mix(in srgb, var(--tg-theme-button-color, #5288c1) 72%, black) 0%,
     var(--tg-theme-button-color, #5288c1) 100%
   );
-  color: var(--tg-theme-button-text-color, #fff);
-  font-size: 16px;
+  display: grid;
+  gap: 6px;
+  box-shadow: 0 10px 26px color-mix(in srgb, var(--tg-theme-button-color, #5288c1) 38%, transparent);
+}
+
+.entry-card__title {
   font-weight: 700;
-  padding: 18px;
-  text-align: left;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
+  font-size: 16px;
+}
+
+.entry-card__meta {
+  font-size: 12px;
+  opacity: 0.92;
 }
 
 .options {
@@ -555,32 +466,48 @@ watch(
 
 .option-card {
   overflow: hidden;
+  transition: transform 180ms ease, box-shadow 180ms ease;
+}
+
+.option-card--active {
+  transform: translateY(-1px);
+  box-shadow: 0 14px 28px color-mix(in srgb, var(--tg-theme-link-color, #6ab3f3) 24%, transparent);
 }
 
 .option-card__image {
-  height: 128px;
-  background: linear-gradient(
-    145deg,
-    color-mix(in srgb, var(--tg-theme-link-color, #6ab3f3) 22%, var(--tg-theme-bg-color, #fff)) 0%,
-    color-mix(in srgb, var(--tg-theme-link-color, #6ab3f3) 40%, var(--tg-theme-secondary-bg-color, #f0f4fb)) 100%
-  );
-  border-bottom: 1px solid color-mix(in srgb, var(--tg-theme-hint-color, #8ea0b5) 32%, transparent);
+  height: 118px;
   display: grid;
   place-items: center;
-  color: color-mix(in srgb, var(--tg-theme-link-color, #6ab3f3) 55%, var(--tg-theme-text-color, #11253b));
-  font-size: 13px;
   font-weight: 700;
+  font-size: 13px;
+  color: color-mix(in srgb, var(--tg-theme-link-color, #6ab3f3) 55%, var(--tg-theme-text-color, #13253c));
+  background:
+    linear-gradient(
+      145deg,
+      color-mix(in srgb, var(--tg-theme-link-color, #6ab3f3) 30%, transparent) 0%,
+      color-mix(in srgb, var(--tg-theme-link-color, #6ab3f3) 10%, var(--tg-theme-secondary-bg-color, #f0f4fb)) 100%
+    );
+  border-bottom: 1px solid color-mix(in srgb, var(--tg-theme-hint-color, #8ea0b5) 32%, transparent);
 }
 
-.option-card__body {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  gap: 12px;
+.option-card__image--team {
+  background:
+    linear-gradient(
+      145deg,
+      color-mix(in srgb, var(--tg-theme-accent-text-color, #6ab2f2) 26%, transparent) 0%,
+      color-mix(in srgb, var(--tg-theme-accent-text-color, #6ab2f2) 12%, var(--tg-theme-secondary-bg-color, #f0f4fb)) 100%
+    );
+}
+
+.option-card__header {
   padding: 14px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
 }
 
-.option-card__body h2 {
+.option-card__header h2 {
   margin: 0;
   font-size: 18px;
 }
@@ -588,14 +515,15 @@ watch(
 .option-card__toggle {
   border: 1px solid color-mix(in srgb, var(--tg-theme-link-color, #6ab3f3) 65%, transparent);
   background: var(--tg-theme-bg-color, #fff);
-  color: var(--tg-theme-link-color, #1f5d96);
+  color: var(--tg-theme-link-color, #2f72ac);
+  font-size: 13px;
   font-weight: 700;
   border-radius: 999px;
-  padding: 8px 12px;
+  padding: 8px 13px;
 }
 
 .registration-form {
-  border-top: 1px solid color-mix(in srgb, var(--tg-theme-hint-color, #8ea0b5) 32%, transparent);
+  border-top: 1px solid color-mix(in srgb, var(--tg-theme-hint-color, #8ea0b5) 28%, transparent);
   padding: 14px;
   display: grid;
   gap: 10px;
@@ -603,19 +531,22 @@ watch(
 
 .registration-form label {
   display: grid;
-  gap: 6px;
-  font-size: 14px;
-  font-weight: 600;
+  gap: 5px;
+}
+
+.registration-form label span {
+  font-size: 13px;
+  color: var(--tg-theme-subtitle-text-color, #4b627b);
 }
 
 .registration-form input {
-  height: 40px;
-  border: 1px solid color-mix(in srgb, var(--tg-theme-hint-color, #8ea0b5) 48%, transparent);
-  border-radius: 10px;
-  padding: 0 10px;
+  height: 41px;
+  border: 1px solid color-mix(in srgb, var(--tg-theme-hint-color, #8ea0b5) 45%, transparent);
+  border-radius: 11px;
+  padding: 0 11px;
   font-size: 15px;
   background: var(--tg-theme-bg-color, #fff);
-  color: var(--tg-theme-text-color, #11253b);
+  color: var(--tg-theme-text-color, #13253c);
 }
 
 .registration-form input:focus-visible {
@@ -626,7 +557,7 @@ watch(
 .registration-form__fallback {
   border: 0;
   border-radius: 12px;
-  padding: 12px;
+  padding: 11px;
   font-weight: 700;
   background: var(--tg-theme-button-color, #123f6a);
   color: var(--tg-theme-button-text-color, #fff);
@@ -638,18 +569,28 @@ watch(
 }
 
 .registration-form__message {
-  margin: 0;
+  margin: 2px 0 0;
+  border-radius: 12px;
   padding: 10px;
-  border-radius: 10px;
-  background: color-mix(in srgb, var(--tg-theme-link-color, #6ab3f3) 12%, var(--tg-theme-bg-color, #fff));
-  color: var(--tg-theme-text-color, #1f4061);
-  font-size: 14px;
+  font-size: 13px;
+}
+
+.registration-form__message--success {
+  background: color-mix(in srgb, #1dbf73 16%, var(--tg-theme-bg-color, #fff));
+  color: color-mix(in srgb, #1dbf73 68%, var(--tg-theme-text-color, #13253c));
+}
+
+.registration-form__message--error {
+  background: color-mix(in srgb, var(--tg-theme-destructive-text-color, #ec3942) 14%, var(--tg-theme-bg-color, #fff));
+  color: var(--tg-theme-destructive-text-color, #c9373f);
 }
 
 @media (min-width: 720px) {
   .app-shell {
-    max-width: 740px;
+    max-width: 760px;
     margin: 0 auto;
+    padding-left: 20px;
+    padding-right: 20px;
   }
 }
 
