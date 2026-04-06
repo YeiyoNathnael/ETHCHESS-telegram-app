@@ -88,7 +88,7 @@ function openForm(type: RegistrationType): void {
   }
   const nextForm = activeForm.value === type ? null : type;
   activeForm.value = nextForm;
-  syncMainButton(nextForm);
+  queueMicrotask(() => syncMainButton(nextForm));
 }
 
 async function submitRegistration(type: RegistrationType): Promise<void> {
@@ -108,35 +108,51 @@ async function submitRegistration(type: RegistrationType): Promise<void> {
   payload.set('phone_number', form.phoneNumber.trim());
   payload.set('age', form.age.trim());
 
-  const controller = new AbortController();
-  const timeoutId = window.setTimeout(() => {
-    controller.abort();
-  }, SUBMIT_TIMEOUT_MS);
-
   try {
-    const response = await fetch(FORM_ENDPOINT, {
-      method: 'POST',
-      headers: {
-        Accept: 'application/json',
-      },
-      body: payload,
-      signal: controller.signal,
-    });
+    const response = await Promise.race<Response>([
+      fetch(FORM_ENDPOINT, {
+        method: 'POST',
+        headers: {
+          Accept: 'application/json',
+        },
+        body: payload,
+      }),
+      new Promise<Response>((_, reject) => {
+        window.setTimeout(() => reject(new Error('timeout')), SUBMIT_TIMEOUT_MS);
+      }),
+    ]);
 
     if (!response.ok) {
-      throw new Error(`Form submission failed with status ${response.status}`);
+      let formspreeError = '';
+      try {
+        const body = await response.json() as { errors?: { message?: string }[] };
+        formspreeError = body.errors?.[0]?.message?.trim() || '';
+      } catch {
+        // no-op
+      }
+      throw new Error(formspreeError || `Form submission failed with status ${response.status}`);
     }
 
     submitStates[type] = 'success';
     submitMessages[type] = 'Registration submitted successfully.';
     resetForm(type);
-  } catch {
+  } catch (error) {
     submitStates[type] = 'error';
-    submitMessages[type] = 'Could not submit right now. Check your connection and try again.';
+    submitMessages[type] = error instanceof Error && error.message
+      ? error.message
+      : 'Could not submit right now. Check your connection and try again.';
   } finally {
-    window.clearTimeout(timeoutId);
     syncMainButton(activeForm.value);
   }
+}
+
+function setMainButtonParams(params: {
+  isVisible?: boolean;
+  text?: string;
+  isEnabled?: boolean;
+  isLoaderVisible?: boolean;
+}): void {
+  mainButton.setParams.ifAvailable(params);
 }
 
 function syncMainButton(forcedType: RegistrationType | null = activeForm.value): void {
@@ -146,10 +162,9 @@ function syncMainButton(forcedType: RegistrationType | null = activeForm.value):
 
   const currentType = forcedType;
   if (!currentType) {
-    mainButton.setParams({
+    setMainButtonParams({
       isVisible: false,
       isLoaderVisible: false,
-      hasShineEffect: false,
     });
     return;
   }
@@ -157,12 +172,11 @@ function syncMainButton(forcedType: RegistrationType | null = activeForm.value):
   const isSubmitting = submitStates[currentType] === 'submitting';
   const isEnabled = isFormValid(currentType) && !isSubmitting;
 
-  mainButton.setParams({
+  setMainButtonParams({
     isVisible: true,
     text: getMainButtonText(currentType),
     isEnabled,
     isLoaderVisible: isSubmitting,
-    hasShineEffect: isEnabled,
   });
 }
 
