@@ -14,6 +14,7 @@ type RegistrationForm = {
 
 const FORM_ENDPOINT = 'https://formspree.io/f/xgopdvog';
 const logoSrc = `${import.meta.env.BASE_URL}ethchess-logo.png`;
+const SUBMIT_TIMEOUT_MS = 15000;
 
 const competitionOpen = ref(false);
 const activeForm = ref<RegistrationType | null>(null);
@@ -77,8 +78,6 @@ function toggleCompetition(): void {
   competitionOpen.value = !competitionOpen.value;
   if (!competitionOpen.value) {
     activeForm.value = null;
-    syncMainButton(null);
-    return;
   }
   syncMainButton(activeForm.value);
 }
@@ -99,25 +98,29 @@ async function submitRegistration(type: RegistrationType): Promise<void> {
 
   submitStates[type] = 'submitting';
   submitMessages[type] = '';
-  syncMainButton();
+  syncMainButton(type);
 
   const form = forms[type];
-  const payload = new URLSearchParams({
-    registration_type: type,
-    full_name: form.fullName.trim(),
-    subcity: form.subcity.trim(),
-    phone_number: form.phoneNumber.trim(),
-    age: form.age.trim(),
-  });
+  const payload = new FormData();
+  payload.set('registration_type', type);
+  payload.set('full_name', form.fullName.trim());
+  payload.set('subcity', form.subcity.trim());
+  payload.set('phone_number', form.phoneNumber.trim());
+  payload.set('age', form.age.trim());
+
+  const controller = new AbortController();
+  const timeoutId = window.setTimeout(() => {
+    controller.abort();
+  }, SUBMIT_TIMEOUT_MS);
 
   try {
     const response = await fetch(FORM_ENDPOINT, {
       method: 'POST',
       headers: {
         Accept: 'application/json',
-        'Content-Type': 'application/x-www-form-urlencoded',
       },
-      body: payload.toString(),
+      body: payload,
+      signal: controller.signal,
     });
 
     if (!response.ok) {
@@ -129,9 +132,10 @@ async function submitRegistration(type: RegistrationType): Promise<void> {
     resetForm(type);
   } catch {
     submitStates[type] = 'error';
-    submitMessages[type] = 'Could not submit right now. Please try again.';
+    submitMessages[type] = 'Could not submit right now. Check your connection and try again.';
   } finally {
-    syncMainButton();
+    window.clearTimeout(timeoutId);
+    syncMainButton(activeForm.value);
   }
 }
 
@@ -176,6 +180,7 @@ function getMessageClass(type: RegistrationType): string {
 }
 
 onMounted(() => {
+  mainButton.mount.ifAvailable();
   const clickBinding = mainButton.onClick.ifAvailable(onMainButtonPressed);
   offMainButton = clickBinding.ok ? clickBinding.data : null;
 
@@ -189,7 +194,7 @@ onMounted(() => {
     void requestFullscreen.data;
   }
 
-  syncMainButton();
+  syncMainButton(activeForm.value);
 });
 
 onBeforeUnmount(() => {
@@ -213,9 +218,10 @@ watch(
     submitStates.team,
   ],
   () => {
-    syncMainButton();
+    syncMainButton(activeForm.value);
   },
 );
+
 </script>
 
 <template>
@@ -291,7 +297,7 @@ watch(
           </label>
 
           <button class="registration-form__fallback" type="submit" :disabled="submitStates.individual === 'submitting'">
-            Submit Individual Registration
+            {{ submitStates.individual === 'submitting' ? 'Submitting...' : 'Submit Individual Registration' }}
           </button>
 
           <p v-if="submitMessages.individual" :class="getMessageClass('individual')">
@@ -352,7 +358,7 @@ watch(
           </label>
 
           <button class="registration-form__fallback" type="submit" :disabled="submitStates.team === 'submitting'">
-            Submit Team Application
+            {{ submitStates.team === 'submitting' ? 'Submitting...' : 'Submit Team Application' }}
           </button>
 
           <p v-if="submitMessages.team" :class="getMessageClass('team')">
@@ -620,15 +626,4 @@ watch(
   }
 }
 
-@media (hover: none) and (pointer: coarse) {
-  .registration-form__fallback {
-    display: none;
-  }
-}
-
-:global(body:not(.is-telegram)) .registration-form__fallback {
-  display: inline-flex;
-  justify-content: center;
-  align-items: center;
-}
 </style>
