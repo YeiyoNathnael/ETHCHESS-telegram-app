@@ -77,16 +77,19 @@ function toggleCompetition(): void {
   competitionOpen.value = !competitionOpen.value;
   if (!competitionOpen.value) {
     activeForm.value = null;
+    syncMainButton(null);
+    return;
   }
-  syncMainButton();
+  syncMainButton(activeForm.value);
 }
 
 function openForm(type: RegistrationType): void {
   if (!competitionOpen.value) {
     competitionOpen.value = true;
   }
-  activeForm.value = activeForm.value === type ? null : type;
-  syncMainButton();
+  const nextForm = activeForm.value === type ? null : type;
+  activeForm.value = nextForm;
+  syncMainButton(nextForm);
 }
 
 async function submitRegistration(type: RegistrationType): Promise<void> {
@@ -132,12 +135,12 @@ async function submitRegistration(type: RegistrationType): Promise<void> {
   }
 }
 
-function syncMainButton(): void {
+function syncMainButton(forcedType: RegistrationType | null = activeForm.value): void {
   if (!mainButton.isMounted()) {
     return;
   }
 
-  const currentType = activeForm.value;
+  const currentType = forcedType;
   if (!currentType) {
     mainButton.setParams({
       isVisible: false,
@@ -230,7 +233,7 @@ watch(
 
     <button class="entry-card" type="button" @click="toggleCompetition">
       <span class="entry-card__title">Register for the Under 20's Chess Competition</span>
-      <span class="entry-card__meta">{{ competitionOpen ? 'Hide options' : 'Open options' }}</span>
+      <span class="entry-card__action">{{ competitionOpen ? 'Hide options' : 'Show options' }}</span>
     </button>
 
     <section v-if="competitionOpen" class="options">
@@ -372,7 +375,8 @@ watch(
     radial-gradient(circle at 100% 0%, color-mix(in srgb, var(--tg-theme-button-color, #5288c1) 15%, transparent) 0%, transparent 35%),
     var(--tg-theme-bg-color, #eef3fb);
   color: var(--tg-theme-text-color, #13253c);
-  display: grid;
+  display: flex;
+  flex-direction: column;
   gap: 14px;
 }
 
@@ -443,8 +447,10 @@ watch(
     color-mix(in srgb, var(--tg-theme-button-color, #5288c1) 45%, black) 0%,
     color-mix(in srgb, var(--tg-theme-button-color, #5288c1) 70%, black) 100%
   );
-  display: grid;
-  gap: 4px;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 10px;
   box-shadow: 0 6px 16px color-mix(in srgb, var(--tg-theme-button-color, #5288c1) 30%, black);
 }
 
@@ -453,13 +459,19 @@ watch(
   font-size: 16px;
 }
 
-.entry-card__meta {
+.entry-card__action {
   font-size: 12px;
-  opacity: 0.92;
+  font-weight: 700;
+  border-radius: 999px;
+  padding: 6px 12px;
+  border: 1px solid color-mix(in srgb, var(--tg-theme-button-text-color, #fff) 40%, transparent);
+  background: color-mix(in srgb, black 35%, transparent);
+  color: var(--tg-theme-button-text-color, #fff);
 }
 
 .options {
-  display: grid;
+  display: flex;
+  flex-direction: column;
   gap: 14px;
 }
 
