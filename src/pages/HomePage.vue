@@ -10,7 +10,7 @@ const logoSrc = `${import.meta.env.BASE_URL}ethchess-logo.png`;
         <img class="hero__logo" :src="logoSrc" alt="ETHCHESS logo" />
         <div>
           <h1 class="hero__title">Welcome to ETHCHESS</h1>
-          <p class="hero__subtitle">Register for the Under 20's Chess Competition</p>
+          <p class="hero__subtitle">The Future of Chess in Addis Ababa</p>
         </div>
       </div>
     </section>

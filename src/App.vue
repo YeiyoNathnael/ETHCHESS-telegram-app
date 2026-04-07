@@ -216,6 +216,12 @@ onMounted(() => {
   text-decoration: none;
 }
 
+.submit-btn:disabled {
+  opacity: 0.65;
+  cursor: not-allowed;
+  box-shadow: none;
+}
+
 @media (min-width: 720px) {
   .app-shell {
     max-width: 760px;

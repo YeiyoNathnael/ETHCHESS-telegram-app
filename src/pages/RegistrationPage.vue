@@ -22,6 +22,15 @@ const submitLabel = computed(() => {
 });
 
 const lockKey = computed(() => `ethchess_submitted_${props.type}`);
+const buttonLabel = computed(() => {
+  if (submitted.value) {
+    return 'Already submitted';
+  }
+  if (submitting.value) {
+    return 'Submitting...';
+  }
+  return submitLabel.value;
+});
 
 onMounted(() => {
   submitted.value = localStorage.getItem(lockKey.value) === '1';
@@ -54,6 +63,7 @@ async function handleSubmit(event: Event): Promise<void> {
       throw new Error('Submission failed. Please try again.');
     }
 
+    error.value = '';
     submitted.value = true;
     localStorage.setItem(lockKey.value, '1');
   } catch {
@@ -73,10 +83,6 @@ async function handleSubmit(event: Event): Promise<void> {
     </section>
 
     <section class="card form-card">
-      <p v-if="submitted" class="form-note form-note--success">
-        You already submitted this form from this device. Multiple submissions are disabled.
-      </p>
-
       <form
         class="form-grid"
         :action="endpoint"
@@ -106,11 +112,16 @@ async function handleSubmit(event: Event): Promise<void> {
         </label>
 
         <button class="submit-btn" type="submit" :disabled="submitted || submitting">
-          {{ submitting ? 'Submitting...' : submitLabel }}
+          {{ buttonLabel }}
         </button>
       </form>
 
       <p v-if="error" class="form-note form-note--error">{{ error }}</p>
+    </section>
+
+    <section class="card form-card">
+      <h2 class="option-card__title">Accidentally submitted?</h2>
+      <p class="hero__subtitle">Please contact <span class="inline-link">@Biniyam_girma_1</span></p>
     </section>
   </main>
 </template>
