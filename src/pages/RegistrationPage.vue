@@ -119,9 +119,5 @@ async function handleSubmit(event: Event): Promise<void> {
       <p v-if="error" class="form-note form-note--error">{{ error }}</p>
     </section>
 
-    <section class="card form-card">
-      <h2 class="option-card__title">Accidentally submitted?</h2>
-      <p class="hero__subtitle">Please contact <span class="inline-link">@Biniyam_girma_1</span></p>
-    </section>
   </main>
 </template>

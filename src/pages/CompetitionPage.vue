@@ -49,5 +49,10 @@ onMounted(() => {
         </div>
       </article>
     </section>
+
+    <section v-if="individualSubmitted || teamSubmitted" class="card form-card">
+      <h2 class="option-card__title">Accidentally submitted?</h2>
+      <p class="hero__subtitle">Please contact <span class="inline-link">@Biniyam_girma_1</span></p>
+    </section>
   </main>
 </template>
