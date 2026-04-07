@@ -1,5 +1,6 @@
 <script setup lang="ts">
-import { computed, onMounted, ref } from 'vue';
+import { computed, ref, watch } from 'vue';
+import { isSubmissionLocked, setSubmissionLocked } from '@/utils/submissionLock';
 
 const props = defineProps<{ type: 'individual' | 'team' }>();
 
@@ -21,7 +22,6 @@ const submitLabel = computed(() => {
   return props.type === 'team' ? 'Submit Team Application' : 'Submit Individual Registration';
 });
 
-const lockKey = computed(() => `ethchess_submitted_${props.type}`);
 const buttonLabel = computed(() => {
   if (submitted.value) {
     return 'Already submitted';
@@ -32,8 +32,15 @@ const buttonLabel = computed(() => {
   return submitLabel.value;
 });
 
-onMounted(() => {
-  submitted.value = localStorage.getItem(lockKey.value) === '1';
+watch(() => props.type, () => {
+  submitted.value = isSubmissionLocked(props.type);
+  error.value = '';
+}, { immediate: true });
+
+watch(submitting, (isNowSubmitting) => {
+  if (isNowSubmitting) {
+    error.value = '';
+  }
 });
 
 async function handleSubmit(event: Event): Promise<void> {
@@ -65,7 +72,7 @@ async function handleSubmit(event: Event): Promise<void> {
 
     error.value = '';
     submitted.value = true;
-    localStorage.setItem(lockKey.value, '1');
+    setSubmissionLocked(props.type);
   } catch {
     error.value = 'Could not submit right now. Please try again.';
   } finally {

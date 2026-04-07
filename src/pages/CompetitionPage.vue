@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { onMounted, ref } from 'vue';
+import { isSubmissionLocked } from '@/utils/submissionLock';
 
 const individualSubmitted = ref(false);
 const teamSubmitted = ref(false);
@@ -7,8 +8,8 @@ const individualBannerSrc = `${import.meta.env.BASE_URL}Under%2020%27s%20Individ
 const teamBannerSrc = `${import.meta.env.BASE_URL}Under%2020%27s%20Team%20Championship.png`;
 
 onMounted(() => {
-  individualSubmitted.value = localStorage.getItem('ethchess_submitted_individual') === '1';
-  teamSubmitted.value = localStorage.getItem('ethchess_submitted_team') === '1';
+  individualSubmitted.value = isSubmissionLocked('individual');
+  teamSubmitted.value = isSubmissionLocked('team');
 });
 </script>
 
