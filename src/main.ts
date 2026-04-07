@@ -11,9 +11,16 @@ import router from './router';
 // Mock the environment in case we are outside Telegram.
 import './mockEnv';
 
-const launchParams = retrieveLaunchParams();
-const { tgWebAppPlatform: platform } = launchParams;
-const debug = (launchParams.tgWebAppStartParam || '').includes('debug') || import.meta.env.DEV;
+let platform = '';
+let debug = import.meta.env.DEV;
+
+try {
+  const launchParams = retrieveLaunchParams();
+  platform = launchParams.tgWebAppPlatform;
+  debug = (launchParams.tgWebAppStartParam || '').includes('debug') || import.meta.env.DEV;
+} catch {
+  // Allow rendering even when opened outside Telegram launch context.
+}
 
 init({
   debug,
