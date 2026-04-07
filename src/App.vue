@@ -127,11 +127,8 @@ onMounted(() => {
 
 .option-card__image {
   height: 74px;
-  display: grid;
-  place-items: center;
-  font-weight: 700;
-  font-size: 13px;
-  color: color-mix(in srgb, var(--tg-theme-link-color, #6ab3f3) 55%, var(--tg-theme-text-color, #13253c));
+  display: block;
+  overflow: hidden;
   background:
     linear-gradient(
       145deg,
@@ -148,6 +145,13 @@ onMounted(() => {
       color-mix(in srgb, var(--tg-theme-accent-text-color, #6ab2f2) 26%, transparent) 0%,
       color-mix(in srgb, var(--tg-theme-accent-text-color, #6ab2f2) 12%, var(--tg-theme-secondary-bg-color, #f0f4fb)) 100%
     );
+}
+
+.option-card__banner {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
 }
 
 .option-card__body {

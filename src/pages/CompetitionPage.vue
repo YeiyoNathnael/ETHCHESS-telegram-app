@@ -3,6 +3,8 @@ import { onMounted, ref } from 'vue';
 
 const individualSubmitted = ref(false);
 const teamSubmitted = ref(false);
+const individualBannerSrc = `${import.meta.env.BASE_URL}Individual-baner.png`;
+const teamBannerSrc = `${import.meta.env.BASE_URL}team-banner.png`;
 
 onMounted(() => {
   individualSubmitted.value = localStorage.getItem('ethchess_submitted_individual') === '1';
@@ -20,7 +22,9 @@ onMounted(() => {
 
     <section class="options">
       <article class="card option-card">
-        <div class="option-card__image">Individual Image Placeholder</div>
+        <div class="option-card__image">
+          <img class="option-card__banner" :src="individualBannerSrc" alt="Individual registration banner" />
+        </div>
         <div class="option-card__body">
           <h2 class="option-card__title">Individual Registration</h2>
           <RouterLink
@@ -35,7 +39,9 @@ onMounted(() => {
       </article>
 
       <article class="card option-card">
-        <div class="option-card__image option-card__image--team">Team Image Placeholder</div>
+        <div class="option-card__image">
+          <img class="option-card__banner" :src="teamBannerSrc" alt="Team registration banner" />
+        </div>
         <div class="option-card__body">
           <h2 class="option-card__title">Team Application</h2>
           <RouterLink
