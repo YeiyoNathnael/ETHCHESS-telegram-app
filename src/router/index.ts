@@ -5,7 +5,7 @@ import CompetitionPage from '@/pages/CompetitionPage.vue';
 import RegistrationPage from '@/pages/RegistrationPage.vue';
 
 const router = createRouter({
-  history: createWebHashHistory(import.meta.env.BASE_URL),
+  history: createWebHashHistory(),
   routes: [
     {
       path: '/',
