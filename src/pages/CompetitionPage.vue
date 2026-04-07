@@ -3,8 +3,8 @@ import { onMounted, ref } from 'vue';
 
 const individualSubmitted = ref(false);
 const teamSubmitted = ref(false);
-const individualBannerSrc = `${import.meta.env.BASE_URL}Individual-baner.png`;
-const teamBannerSrc = `${import.meta.env.BASE_URL}team-banner.png`;
+const individualBannerSrc = `${import.meta.env.BASE_URL}Under%2020%27s%20Individual%20Championship.png`;
+const teamBannerSrc = `${import.meta.env.BASE_URL}Under%2020%27s%20Team%20Championship.png`;
 
 onMounted(() => {
   individualSubmitted.value = localStorage.getItem('ethchess_submitted_individual') === '1';
