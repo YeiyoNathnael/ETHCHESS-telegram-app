@@ -6,6 +6,7 @@ import { retrieveLaunchParams } from '@tma.js/sdk-vue';
 import App from './App.vue';
 import { errorHandler } from './errorHandler';
 import { init } from './init';
+import router from './router';
 
 // Mock the environment in case we are outside Telegram.
 import './mockEnv';
@@ -24,5 +25,6 @@ init({
 
   const app = createApp(App);
   app.config.errorHandler = errorHandler;
+  app.use(router);
   app.mount('#app');
 });

@@ -1,33 +1,6 @@
 <script setup lang="ts">
-import { onMounted, ref } from 'vue';
-import { miniApp, themeParams, useSignal, viewport } from '@tma.js/sdk-vue';
-
-type RegistrationType = 'individual' | 'team';
-
-const FORM_ENDPOINT = 'https://formspree.io/f/xgopdvog';
-const logoSrc = `${import.meta.env.BASE_URL}ethchess-logo.png`;
-
-const competitionOpen = ref(false);
-const activeForm = ref<RegistrationType | null>(null);
-const isDarkTheme = useSignal(themeParams.isDark);
-
-function getFormTitle(type: RegistrationType): string {
-  return type === 'individual' ? 'Individual Registration' : 'Team Application';
-}
-
-function toggleCompetition(): void {
-  competitionOpen.value = !competitionOpen.value;
-  if (!competitionOpen.value) {
-    activeForm.value = null;
-  }
-}
-
-function openForm(type: RegistrationType): void {
-  if (!competitionOpen.value) {
-    competitionOpen.value = true;
-  }
-  activeForm.value = activeForm.value === type ? null : type;
-}
+import { onMounted } from 'vue';
+import { miniApp, viewport } from '@tma.js/sdk-vue';
 
 onMounted(() => {
   miniApp.setHeaderColor.ifAvailable('bg_color');
@@ -45,138 +18,10 @@ onMounted(() => {
 </script>
 
 <template>
-  <main class="app-shell" :class="{ 'app-shell--dark': isDarkTheme }">
-    <section class="hero card">
-      <div class="hero__topline">ETHCHESS CLUB</div>
-      <div class="hero__row">
-        <img class="hero__logo" :src="logoSrc" alt="ETHCHESS logo" />
-        <div>
-          <h1 class="hero__title">Welcome to ETHCHESS</h1>
-          <p class="hero__subtitle">Register for the Under 20's Chess Competition</p>
-        </div>
-      </div>
-    </section>
-
-    <section class="entry-card card">
-      <h2 class="entry-card__title">Register for the Under 20's Chess Competition</h2>
-      <button class="entry-card__action-btn" type="button" @click="toggleCompetition">
-        {{ competitionOpen ? 'Hide options' : 'Show options' }}
-      </button>
-    </section>
-
-    <section v-if="competitionOpen" class="options">
-      <article class="card option-card" :class="{ 'option-card--active': activeForm === 'individual' }">
-        <div class="option-card__image">Individual Image Placeholder</div>
-        <div class="option-card__header">
-          <h2>{{ getFormTitle('individual') }}</h2>
-          <button class="option-card__toggle" type="button" @click="openForm('individual')">
-            {{ activeForm === 'individual' ? 'Close' : 'Open' }}
-          </button>
-        </div>
-
-        <form
-          v-if="activeForm === 'individual'"
-          class="registration-form"
-          :action="FORM_ENDPOINT"
-          method="POST"
-        >
-          <input type="hidden" name="registration_type" value="individual" />
-
-          <label>
-            <span>Full name/ሙሉ ስም፡</span>
-            <input name="full_name" type="text" required />
-          </label>
-
-          <label>
-            <span>Subcity/ክፍለ ከተማ የምትኖሩበት፡</span>
-            <input name="subcity" type="text" required />
-          </label>
-
-          <label>
-            <span>Phone Number/ስልክ ቁጥር፡</span>
-            <input
-              name="phone_number"
-              type="tel"
-              inputmode="tel"
-              required
-            />
-          </label>
-
-          <label>
-            <span>Age/እድሜ፡</span>
-            <input
-              name="age"
-              type="number"
-              min="1"
-              inputmode="numeric"
-              required
-            />
-          </label>
-
-          <button class="registration-form__fallback" type="submit">
-            Submit Individual Registration
-          </button>
-        </form>
-      </article>
-
-      <article class="card option-card" :class="{ 'option-card--active': activeForm === 'team' }">
-        <div class="option-card__image option-card__image--team">Team Image Placeholder</div>
-        <div class="option-card__header">
-          <h2>{{ getFormTitle('team') }}</h2>
-          <button class="option-card__toggle" type="button" @click="openForm('team')">
-            {{ activeForm === 'team' ? 'Close' : 'Open' }}
-          </button>
-        </div>
-
-        <form
-          v-if="activeForm === 'team'"
-          class="registration-form"
-          :action="FORM_ENDPOINT"
-          method="POST"
-        >
-          <input type="hidden" name="registration_type" value="team" />
-
-          <label>
-            <span>Full name/ሙሉ ስም፡</span>
-            <input name="full_name" type="text" required />
-          </label>
-
-          <label>
-            <span>Subcity/ክፍለ ከተማ የምትኖሩበት፡</span>
-            <input name="subcity" type="text" required />
-          </label>
-
-          <label>
-            <span>Phone Number/ስልክ ቁጥር፡</span>
-            <input
-              name="phone_number"
-              type="tel"
-              inputmode="tel"
-              required
-            />
-          </label>
-
-          <label>
-            <span>Age/እድሜ፡</span>
-            <input
-              name="age"
-              type="number"
-              min="1"
-              inputmode="numeric"
-              required
-            />
-          </label>
-
-          <button class="registration-form__fallback" type="submit">
-            Submit Team Application
-          </button>
-        </form>
-      </article>
-    </section>
-  </main>
+  <RouterView />
 </template>
 
-<style scoped>
+<style>
 .app-shell {
   min-height: var(--tg-viewport-stable-height, 100dvh);
   padding:
@@ -196,13 +41,6 @@ onMounted(() => {
   margin-top: 14px;
 }
 
-.app-shell--dark {
-  background:
-    radial-gradient(circle at 8% -12%, color-mix(in srgb, var(--tg-theme-link-color, #6ab3f3) 28%, transparent) 0%, transparent 42%),
-    radial-gradient(circle at 100% 0%, color-mix(in srgb, var(--tg-theme-button-color, #5288c1) 24%, transparent) 0%, transparent 36%),
-    var(--tg-theme-bg-color, #111820);
-}
-
 .card {
   border-radius: 20px;
   border: 1px solid color-mix(in srgb, var(--tg-theme-hint-color, #8ea0b5) 30%, transparent);
@@ -212,8 +50,6 @@ onMounted(() => {
 
 .hero {
   padding: 12px;
-  display: block;
-  height: auto;
 }
 
 .hero__topline {
@@ -252,22 +88,9 @@ onMounted(() => {
   font-size: 13px;
 }
 
-.entry-card {
-  padding: 12px;
-  height: auto;
-  min-height: 0;
-}
-
-.entry-card__title {
-  margin: 0;
-  font-size: 20px;
-  font-weight: 700;
-  line-height: 1.2;
-  color: var(--tg-theme-text-color, #13253c);
-}
-
-.entry-card__action-btn {
-  margin-top: 10px;
+.primary-btn,
+.link-btn,
+.submit-btn {
   border: 1px solid color-mix(in srgb, var(--tg-theme-button-color, #5288c1) 65%, black);
   background: linear-gradient(
     145deg,
@@ -280,7 +103,14 @@ onMounted(() => {
   font-size: 14px;
   font-weight: 700;
   line-height: 1;
-  box-shadow: 0 6px 14px color-mix(in srgb, var(--tg-theme-button-color, #5288c1) 35%, black);
+  text-decoration: none;
+  display: inline-flex;
+  justify-content: center;
+  align-items: center;
+}
+
+.link-btn {
+  margin-top: 10px;
 }
 
 .options {
@@ -293,13 +123,6 @@ onMounted(() => {
 
 .option-card {
   overflow: hidden;
-  transition: transform 180ms ease, box-shadow 180ms ease;
-  min-height: 0;
-}
-
-.option-card--active {
-  transform: translateY(-1px);
-  box-shadow: 0 14px 28px color-mix(in srgb, var(--tg-theme-link-color, #6ab3f3) 24%, transparent);
 }
 
 .option-card__image {
@@ -327,57 +150,35 @@ onMounted(() => {
     );
 }
 
-.option-card__header {
-  padding: 10px 12px;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 10px;
-  height: auto;
+.option-card__body {
+  padding: 12px;
 }
 
-.option-card__header h2 {
+.option-card__title {
   margin: 0;
-  font-size: 16px;
+  font-size: 18px;
 }
 
-.option-card__toggle {
-  border: 1px solid color-mix(in srgb, var(--tg-theme-link-color, #6ab3f3) 65%, transparent);
-  background: var(--tg-theme-bg-color, #fff);
-  color: var(--tg-theme-link-color, #2f72ac);
-  font-size: 13px;
-  font-weight: 700;
-  border-radius: 999px;
-  padding: 6px 10px;
+.form-card {
+  padding: 12px;
 }
 
-.entry-card__action-btn:active,
-.option-card__toggle:active {
-  transform: translateY(1px);
-}
-
-.option-card--active .option-card__image {
-  height: 108px;
-}
-
-.registration-form {
-  border-top: 1px solid color-mix(in srgb, var(--tg-theme-hint-color, #8ea0b5) 28%, transparent);
-  padding: 14px;
+.form-grid {
   display: grid;
   gap: 10px;
 }
 
-.registration-form label {
+.form-grid label {
   display: grid;
   gap: 5px;
 }
 
-.registration-form label span {
+.form-grid label span {
   font-size: 13px;
   color: var(--tg-theme-subtitle-text-color, #4b627b);
 }
 
-.registration-form input {
+.form-grid input {
   height: 41px;
   border: 1px solid color-mix(in srgb, var(--tg-theme-hint-color, #8ea0b5) 45%, transparent);
   border-radius: 11px;
@@ -387,21 +188,32 @@ onMounted(() => {
   color: var(--tg-theme-text-color, #13253c);
 }
 
-.registration-form input:focus-visible {
+.form-grid input:focus-visible {
   outline: 2px solid var(--tg-theme-link-color, #2f72ac);
   outline-offset: 1px;
 }
 
-.registration-form__fallback {
-  border: 0;
+.form-note {
+  margin: 10px 0 0;
   border-radius: 12px;
-  padding: 11px;
+  padding: 10px;
+  font-size: 13px;
+}
+
+.form-note--success {
+  background: color-mix(in srgb, #1dbf73 16%, var(--tg-theme-bg-color, #fff));
+  color: color-mix(in srgb, #1dbf73 68%, var(--tg-theme-text-color, #13253c));
+}
+
+.form-note--error {
+  background: color-mix(in srgb, var(--tg-theme-destructive-text-color, #ec3942) 14%, var(--tg-theme-bg-color, #fff));
+  color: var(--tg-theme-destructive-text-color, #c9373f);
+}
+
+.inline-link {
+  color: var(--tg-theme-link-color, #2f72ac);
   font-weight: 700;
-  background: var(--tg-theme-button-color, #123f6a);
-  color: var(--tg-theme-button-text-color, #fff);
-  display: inline-flex;
-  justify-content: center;
-  align-items: center;
+  text-decoration: none;
 }
 
 @media (min-width: 720px) {
@@ -412,5 +224,4 @@ onMounted(() => {
     padding-right: 20px;
   }
 }
-
 </style>
